@@ -8,6 +8,7 @@
 #include <set>
 #include <map>
 #include <array>
+#include <utility>
 
 
 #include <stdint.h>
@@ -72,38 +73,36 @@ bool algorithm_x(XistenceVectorMap& rows,
 {
     if (columns.empty())
         return true;
-    else
-    {
-        // looking for a column with a minimum number of elements
-        XistenceTuple c;
-        size_t count = SIZE_MAX;
-        for (auto& v : columns)
-        {
-            if (v.second.size() < count)
-            {
-                count = v.second.size();
-                c = v.first;
-                if (count == 1)
-                    break;
-            }
-        }
 
-        const auto collect = columns[c];
-        for (auto& subset : collect)
+    // looking for a column with a minimum number of elements
+    XistenceTuple c;
+    size_t count = SIZE_MAX;
+    for (auto& v : columns)
+    {
+        if (v.second.size() < count)
         {
-            cover.push_back(subset);
-            // remove overlapping subsets and elements contained in the subset
-            auto buf_cols = extract_intersects(rows, columns, subset);
-            if (algorithm_x(rows, columns, cover))
-                return true;
-            // if a non-empty solution is found - ready, exit
-            restore_intersects(rows, columns, subset, buf_cols);
-            cover.pop_back();
+            count = v.second.size();
+            c = v.first;
+            if (count == 1)
+                break;
         }
-        // we get here either if columns [c] is empty,
-        // or when the recursive search did not find a solution
-        return false;
     }
+
+    const auto collect = columns[c];
+    for (auto& subset : collect)
+    {
+        cover.push_back(subset);
+        // remove overlapping subsets and elements contained in the subset
+        auto buf_cols = extract_intersects(rows, columns, subset);
+        if (algorithm_x(rows, columns, cover))
+            return true;
+        // if a non-empty solution is found - ready, exit
+        restore_intersects(rows, columns, subset, buf_cols);
+        cover.pop_back();
+    }
+    // we get here either if columns [c] is empty,
+    // or when the recursive search did not find a solution
+    return false;
 }
 
 
@@ -119,7 +118,7 @@ typedef std::array<std::array<int, 9>, 9> Matrix;
 // (3, q, num) - there is a number num in the q quadrant
 
 template<typename T>
-Matrix xsudoku(const T& puzzle)
+std::pair<bool, Matrix> xsudoku(const T& puzzle)
 {
     // fill in the lines
 
@@ -138,6 +137,7 @@ Matrix xsudoku(const T& puzzle)
                     { 3, quad, num}
                 };
             }
+
     // fill in the columns
 
     XistenceSetMap cols;
@@ -178,7 +178,7 @@ Matrix xsudoku(const T& puzzle)
             ret[v[0] - 1][v[1] - 1] = v[2];
         }
     }
-    return ret;
+    return { success, ret };
 }
 
 
@@ -196,19 +196,22 @@ const int test[9][9]{
 
 int main()
 {
-    auto res = xsudoku(test);
+    auto [ok, res] = xsudoku(test);
 
-    for (auto& l : res)
+    if (ok)
     {
-        bool first = true;
-        for (auto& v : l)
+        for (auto& l : res)
         {
-            if (!first)
-                std::cout << ' ';
-            first = false;
-            std::cout << v;
+            bool first = true;
+            for (auto& v : l)
+            {
+                if (!first)
+                    std::cout << ' ';
+                first = false;
+                std::cout << v;
+            }
+            std::cout << '\n';
         }
-        std::cout << '\n';
     }
 
     return 0;
